@@ -4,24 +4,37 @@ Configure a puppet development/demo environment with the following components:
 - puppetmaster, puppetdb and puppetboard (either on a single VM or multiple ones)
 - additional nodes to test agents
 - this repository consists of a Vagrantfile defining several possible hosts and bootstrap scripts to install master and agents
-- all the configuration is done via puppet using a control repo synchronized on the master via r10k: https://github.com/lbernail/puppet-r10k
+- all the configuration is done via puppet using a control repo synchronized on the master via r10k: https://github.com/byzent/puppet-r10k
 
 ### Bootstrap the puppetmaster in standalone mode
-This installation provides a master with puppetdb and puppetboard on single VM. To use this, your master node needs to have the role **role::master_standalone**. See https://github.com/lbernail/puppet-r10k/blob/production/manifests/nodes.pp for role assignment and https://github.com/lbernail/puppet-r10k/tree/production/site/role/manifests for role list. To change the master role (standalone or not) you will have to fork the puppet-r10k repo, modify theses files and update the r10k configuration in the bootstrap script to use your repo.
+This installation provides a master with puppetdb and puppetboard on single VM. To use this, your master node needs to have the role **role::master_standalone**. See https://github.com/byzent/puppet-r10k/blob/production/manifests/nodes.pp for role assignment and https://github.com/lbernail/puppet-r10k/tree/production/site/role/manifests for role list. To change the master role (standalone or not) you will have to fork the puppet-r10k repo, modify theses files and update the r10k configuration in the bootstrap script to use your repo.
 
 * Install virtualbox and vagrant
 * Clone vagrant files
 ```
-git clone https://github.com/lbernail/vagrant-puppet.git
+git clone https://github.com/byzent/vagrant-puppet.git
 ```
-* Go into puppet env, create puppet master and configure it (default box: boxcutter/ubuntu1604)
+* Go into puppet env, create puppet master and configure it (default box: centos/7)
 ```
 cd vagrant-puppet
 vagrant up puppetmaster
-```  
+```
 *Details about virtual machines are in the Vagrantfile (private network for puppet, port redirection for puppetboard, hosts file)*
 * When the vm boots for the first time, vagrant provisioning kicks in using **bootstrap.sh**.
-Main steps:
+Main steps for centos/7:
+    - Installing wget
+    - Configuring puppetlabs repo
+    = Updating yum cache
+    - Installing puppet-agent and git
+    - Copying keys /var/lib/puppet/secure
+    - Creating hiera.yaml
+    - Creating r10k.yaml
+    - Installing hiera-eyaml gem
+    - Installing r10k gem
+    - Deploying with r10k
+    - Performing first puppet run
+
+Main steps for boxcutter/ubuntu1604:
     - Modifying apt sources to rely on AWS Europe
     - Configuring puppetlabs repo
     - Updading apt cache
@@ -44,7 +57,7 @@ vagrant ssh puppetmaster
 2. First agent run on the master (first run was an apply run)
 ```
 sudo /opt/puppetlabs/puppet/bin/puppet agent -t
-```  
+```
 *This run will sync plugins and should do nothing (maybe a few changes because some modules change a few things on the second run)*
 3. Puppetboard will show the new run: http://localhost:5000/
 
@@ -81,8 +94,8 @@ sudo /opt/puppetlabs/puppet/bin/puppet cert sign websrv.vm.local
 ```
 vagrant ssh websrv
 sudo /opt/puppetlabs/puppet/bin/puppet agent -t
-```  
-*This will only give a notice: Default class for unknown node (from default node in site.pp).  
+```
+*This will only give a notice: Default class for unknown node (from default node in site.pp).
 Puppetboard now shows this additional host*
 6. Change site.pp, add profile to websrv node,....
 
@@ -121,10 +134,10 @@ You can find more information here: https://github.com/dergachev/vagrant-vbox-sn
 
 ### Alternative separate install for centos7 support
 
-just add the env var `VAGRANT_VAGRANTFILE=Vagrantfile.centos` before you run commands, it will use the `Vagrantfile.centos` Vagrantfile, `boostrap_centos.sh`, `install_agent_centos.sh` bootstrap files.
+just add the env var `VAGRANT_VAGRANTFILE=Vagrantfile.centos` before you run commands, it will use the `Vagrantfile.ubuntu` Vagrantfile, `boostrap_centos.sh`, `install_agent_centos.sh` bootstrap files.
 
 ```
-VAGRANT_VAGRANTFILE=Vagrantfile.centos vagrant up puppetmaster
-VAGRANT_VAGRANTFILE=Vagrantfile.centos vagrant up puppetdb
-VAGRANT_VAGRANTFILE=Vagrantfile.centos vagrant up puppetreports
+VAGRANT_VAGRANTFILE=Vagrantfile.ubuntu vagrant up puppetmaster
+VAGRANT_VAGRANTFILE=Vagrantfile.ubuntu vagrant up puppetdb
+VAGRANT_VAGRANTFILE=Vagrantfile.ubuntu vagrant up puppetreports
 ```

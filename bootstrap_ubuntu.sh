@@ -1,16 +1,23 @@
 echo "Bootstrapping"
 
-release=`cat /etc/centos-release | cut -d " " -f 4 | cut -d "." -f 1`
+release=`grep DISTRIB_CODENAME /etc/lsb-release | cut -d "=" -f 2`
 env="production"
 
-echo "Configuring puppetlabs repo"
-wget -q https://yum.puppetlabs.com/puppetlabs-release-pc1-el-$release.noarch.rpm -O /tmp/puppetlabs.rpm
-sudo rpm -i /tmp/puppetlabs.rpm > /dev/null
-echo "Updating yum cache"
-sudo yum check-update > /dev/null
-echo "Installing puppet-agent and git"
-sudo yum install -y puppet-agent git > /dev/null 2>&1
+echo "Modifying apt sources to rely on AWS Europe"
+cat > /etc/apt/sources.list <<EOF
+deb http://eu-west-1.ec2.archive.ubuntu.com/ubuntu/ ${release} main restricted universe multiverse
+deb http://eu-west-1.ec2.archive.ubuntu.com/ubuntu/ ${release}-updates main restricted universe multiverse
+deb http://eu-west-1.ec2.archive.ubuntu.com/ubuntu/ ${release}-security main restricted universe multiverse
+EOF
 
+
+echo "Configuring puppetlabs repo"
+wget -q https://apt.puppetlabs.com/puppetlabs-release-pc1-$release.deb -O /tmp/puppetlabs.deb
+dpkg -i /tmp/puppetlabs.deb > /dev/null
+echo "Updating apt cache"
+apt-get update > /dev/null
+echo "Installing puppet-agent and git"
+apt-get install -y puppet-agent git > /dev/null 2>&1
 
 ### eyaml configuration
 echo "Copying keys /var/lib/puppet/secure"
@@ -64,4 +71,4 @@ echo "Deploying with r10k"
 
 echo "Performing first puppet run"
 # And remove default puppet.conf which raises warnings
-sudo /opt/puppetlabs/puppet/bin/puppet apply /etc/puppetlabs/code/environments/$env/manifests --modulepath=/etc/puppetlabs/code/environments/$env/modules:/etc/puppetlabs/code/environments/$env/site --environment=$env
+/opt/puppetlabs/puppet/bin/puppet apply /etc/puppetlabs/code/environments/$env/manifests --modulepath=/etc/puppetlabs/code/environments/$env/modules:/etc/puppetlabs/code/environments/$env/site --environment=$env
