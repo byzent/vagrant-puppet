@@ -10,7 +10,8 @@ sudo curl --remote-name --location https://yum.puppetlabs.com/RPM-GPG-KEY-puppet
 sudo gpg --keyid-format 0xLONG --with-fingerprint ./RPM-GPG-KEY-puppet
 sudo rpm --import RPM-GPG-KEY-puppet
 sudo wget -q https://yum.puppetlabs.com/puppetlabs-release-pc1-el-$release.noarch.rpm -O /tmp/puppetlabs.rpm
-sudo rpm -ivK /tmp/puppetlabs.rpm > /dev/null
+sudo rpm -vK /tmp/puppetlabs.rpm
+sudo rpm -i /tmp/puppetlabs.rpm > /dev/null
 echo "Updating yum cache"
 sudo yum check-update > /dev/null
 echo "Installing puppet-agent"
