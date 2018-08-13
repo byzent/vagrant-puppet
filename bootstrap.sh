@@ -3,11 +3,14 @@ echo "Bootstrapping"
 release=`cat /etc/centos-release | cut -d " " -f 4 | cut -d "." -f 1`
 env="production"
 
-echo "Installing wget"
-sudo yum install -y wget
+echo "Installing wget & curl"
+sudo yum install -y wget curl
 echo "Configuring puppetlabs repo"
-wget -q https://yum.puppetlabs.com/puppetlabs-release-pc1-el-$release.noarch.rpm -O /tmp/puppetlabs.rpm
-sudo rpm -i /tmp/puppetlabs.rpm > /dev/null
+sudo curl --remote-name --location https://yum.puppetlabs.com/RPM-GPG-KEY-puppet
+sudo gpg --keyid-format 0xLONG --with-fingerprint ./RPM-GPG-KEY-puppet
+sudo rpm --import RPM-GPG-KEY-puppet
+sudo wget -q https://yum.puppetlabs.com/puppetlabs-release-pc1-el-$release.noarch.rpm -O /tmp/puppetlabs.rpm
+sudo rpm -ivK /tmp/puppetlabs.rpm > /dev/null
 echo "Updating yum cache"
 sudo yum check-update > /dev/null
 echo "Installing puppet-agent and git"
@@ -26,21 +29,29 @@ chmod 0400 /var/lib/puppet/secure/keys/*
 echo "Creating hiera.yaml"
 cat > /etc/puppetlabs/puppet/hiera.yaml <<EOF
 ---
-:backends:
-  - eyaml
-  - yaml
-:logger: console
-:hierarchy:
-  - "nodes/%{::fqdn}"
-  - common
+version: 5
+defaults:
+  datadir: data
+  data_hash: yaml_data
+hierarchy:
+  - name: "Per-node data (yaml version)"
+    path: "nodes/%{trusted.certname}.yaml" # Add file extension
+    # path: "nodes/%{::fqdn}"
+    # Omitting datadir en data_hash to use defaults.
 
-:yaml:
-   :datadir: /etc/puppetlabs/code/environments/%{::environment}/hieradata
-:eyaml:
-   :datadir: /etc/puppetlabs/code/environments/%{::environment}/hieradata
-   :extension: 'yaml'
-   :pkcs7_private_key: /var/lib/puppet/secure/keys/private_key.pkcs7.pem
-   :pkcs7_public_key: /var/lib/puppet/secure/keys/public_key.pkcs7.pem
+  - name: "Per-group secrets"
+    path: "groups/%{facts.group}.eyaml"
+    lookup_key: eyaml_lookup_key
+    options:
+      pkcs7_private_key: /var/lib/puppet/secure/keys/private_key.pkcs7.pem
+      pkcs7_public_key:  /var/lib/puppet/secure/keys/public_key.pkcs7.pem
+
+  - name: "Other YAML hierarchy levels"
+    paths: # Can specify an array of paths instead of a single one.
+      - "location/%{facts.whereami}/%{facts.group}.yaml"
+      - "groups/%{facts.group}.yaml"
+      - "os/%{facts.os.family}.yaml"
+      - "common.yaml"
 EOF
 
 echo "Creating r10k.yaml"
